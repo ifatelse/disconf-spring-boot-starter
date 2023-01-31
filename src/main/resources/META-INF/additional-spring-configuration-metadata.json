@@ -1,0 +1,14 @@
+{"properties": [
+  {
+    "name": "disconf.config.load",
+    "type": "java.lang.String",
+    "defaultValue": "",
+    "description": "loaded config file."
+  },
+  {
+    "name": "disconf.config.refresh-enabled",
+    "type": "java.lang.Boolean",
+    "defaultValue": true,
+    "description": "listen for configuration changes for refresh configuration, it default true."
+  }
+]}
