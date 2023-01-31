@@ -88,17 +88,5 @@
         </plugins>
     </build>
 
-    <distributionManagement>
-        <snapshotRepository>
-            <id>nexus-snapshots</id>
-            <name>Lenovo Nexus Snapshots</name>
-            <url>http://nexus.lenovo.com/content/repositories/snapshots/</url>
-        </snapshotRepository>
-        <repository>
-            <id>nexus-release</id>
-            <name>Lenovo Nexus Release</name>
-            <url>http://nexus.lenovo.com/content/repositories/releases/</url>
-        </repository>
-    </distributionManagement>
 
 </project>

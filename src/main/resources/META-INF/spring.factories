@@ -1,0 +1,10 @@
+
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.lethe.disconf.spring.boot.DisconfAutoConfiguration,\
+com.lethe.disconf.properties.ConfigurationPropertiesRebinderAutoConfiguration,\
+com.lethe.disconf.scope.RefreshAutoConfiguration,\
+com.lethe.disconf.spring.property.SpringValueAutoConfiguration
+
+
+org.springframework.context.ApplicationContextInitializer=\
+com.lethe.disconf.spring.boot.DisconfApplicationContextInitializer
