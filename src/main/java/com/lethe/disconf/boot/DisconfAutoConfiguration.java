@@ -1,11 +1,11 @@
 package com.lethe.disconf.boot;
 
-import com.lethe.disconf.registry.DisconfUpdateRegistrar;
 import com.lethe.disconf.internals.DisconfContextRefresher;
+import com.lethe.disconf.registry.DisconfUpdateRegistrar;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 /**
  * @Description : Leconf配置中心
@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Configuration;
  * @Version : 1.0
  * @Copyright : Copyright (c) 2022 All Rights Reserved
  **/
-@Configuration
+@AutoConfiguration
 @EnableConfigurationProperties(DisconfProperties.class)
 @ConditionalOnProperty(name = "disconf.config.refresh-enabled", havingValue = "true", matchIfMissing = true)
 public class DisconfAutoConfiguration {

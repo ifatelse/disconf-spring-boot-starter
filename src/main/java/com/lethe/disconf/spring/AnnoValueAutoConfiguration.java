@@ -1,7 +1,7 @@
 package com.lethe.disconf.spring;
 
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 /**
  * @Description :
@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
  * @Version : 1.0
  * @Copyright : Copyright (c) 2022 All Rights Reserved
  **/
-@Configuration
+@AutoConfiguration
 public class AnnoValueAutoConfiguration {
 
 
