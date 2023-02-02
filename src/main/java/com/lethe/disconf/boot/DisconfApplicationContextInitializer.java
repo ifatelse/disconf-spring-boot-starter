@@ -61,7 +61,7 @@ public class DisconfApplicationContextInitializer implements ApplicationContextI
                 Collection<String> canLoadFile = LoadFileUtils.loadFileExtension(confLoadSet);
                 List<String> confLoadList = canLoadFile.stream().map(conf -> DisconfProperties.CONF_PREFIX + conf).collect(Collectors.toList());
                 PropertySourceLoaderUtils.loadProperty(confLoadList, environment);
-                log.info("load local config success");
+                log.info("load the local config success");
                 return;
             }
 
@@ -79,7 +79,7 @@ public class DisconfApplicationContextInitializer implements ApplicationContextI
                 }
             }
 
-            log.info("load remote config success");
+            log.info("load the remote config success");
 
         } catch (Exception e) {
             throw new RuntimeException(e);
