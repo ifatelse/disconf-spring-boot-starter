@@ -10,7 +10,6 @@ import com.baidu.disconf.client.fetcher.FetcherFactory;
 import com.baidu.disconf.client.fetcher.FetcherMgr;
 import com.baidu.disconf.core.common.constants.DisConfigTypeEnum;
 import com.baidu.disconf.core.common.path.DisconfWebPathMgr;
-import com.lethe.disconf.boot.DisconfProperties;
 import com.lethe.disconf.internals.ConfigRepositoryManager;
 import com.lethe.disconf.internals.RemoteConfigRepository;
 import com.lethe.disconf.utils.LoadFileUtils;
