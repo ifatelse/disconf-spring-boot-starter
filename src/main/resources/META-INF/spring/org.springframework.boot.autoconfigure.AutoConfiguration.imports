@@ -1,0 +1,2 @@
+com.lethe.disconf.boot.DisconfAutoConfiguration
+com.lethe.disconf.spring.AnnoValueAutoConfiguration
