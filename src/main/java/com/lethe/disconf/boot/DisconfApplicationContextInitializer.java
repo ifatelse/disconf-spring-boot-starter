@@ -12,6 +12,8 @@ import com.baidu.disconf.core.common.constants.DisConfigTypeEnum;
 import com.baidu.disconf.core.common.path.DisconfWebPathMgr;
 import com.lethe.disconf.internals.ConfigRepositoryManager;
 import com.lethe.disconf.internals.RemoteConfigRepository;
+import com.lethe.disconf.netty.NettyChannelService;
+import com.lethe.disconf.netty.NettyClient;
 import com.lethe.disconf.utils.LoadFileUtils;
 import com.lethe.disconf.utils.PropertySourceLoaderUtils;
 import org.apache.commons.logging.Log;
@@ -49,6 +51,8 @@ public class DisconfApplicationContextInitializer implements ApplicationContextI
 
             ConfigMgr.init();
 
+            NettyClient.start();
+
             if (!DisClientConfig.getInstance().ENABLE_DISCONF) {
                 // String userDefineDownloadDir = DisClientConfig.getInstance().userDefineDownloadDir;
                 // String localDownloadDir = LoadFileUtils.localDownloadDir(userDefineDownloadDir);
@@ -65,7 +69,9 @@ public class DisconfApplicationContextInitializer implements ApplicationContextI
                 DisconfCenterFile disconfCenterFile = getLeconfCenterFile(fileName);
                 String url = disconfCenterFile.getRemoteServerUrl();
                 String classPath = disconfCenterFile.getFileDir();
-                fetcherMgr.downloadFileFromServer(url, fileName, classPath);
+                // fetcherMgr.downloadFileFromServer(url, fileName, classPath);
+
+                NettyChannelService.loadDisconfData(fileName);
 
                 if (LoadFileUtils.canLoadFileExtension(fileName)) {
                     ConfigRepositoryManager.getInstance().addListener(fileName, new RemoteConfigRepository(fetcherMgr, disconfCenterFile));
