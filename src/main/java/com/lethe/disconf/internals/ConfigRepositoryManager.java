@@ -1,9 +1,8 @@
 package com.lethe.disconf.internals;
 
-import com.google.common.collect.Maps;
 import com.google.common.collect.Queues;
 
-import java.util.Map;
+import java.lang.reflect.Field;
 import java.util.Queue;
 
 /**
@@ -15,7 +14,7 @@ import java.util.Queue;
  **/
 public class ConfigRepositoryManager {
 
-    private final Map<String, RemoteConfigRepository> listenerMap = Maps.newConcurrentMap();
+    private final RemoteConfigRepository remoteConfigRepository = null;
 
     private final Queue<String> confChangeQueue = Queues.newConcurrentLinkedQueue();
 
@@ -24,18 +23,6 @@ public class ConfigRepositoryManager {
 
     public static ConfigRepositoryManager getInstance() {
         return INSTANCE;
-    }
-
-    public void addListener(String fileName, RemoteConfigRepository remoteConfigRepository) {
-        listenerMap.put(fileName, remoteConfigRepository);
-    }
-
-    public Map<String, RemoteConfigRepository> listenerMap() {
-        return listenerMap;
-    }
-
-    public RemoteConfigRepository confRepository(String fileName) {
-        return listenerMap.get(fileName);
     }
 
     public void confChange(String fileName){
@@ -50,4 +37,17 @@ public class ConfigRepositoryManager {
         return confChangeQueue.isEmpty();
     }
 
+    public void loadRemoteConfigRepository(RemoteConfigRepository remoteConfigRepository){
+        try {
+            Field field = INSTANCE.getClass().getDeclaredField("remoteConfigRepository");
+            field.setAccessible(true);
+            field.set(INSTANCE, remoteConfigRepository);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public RemoteConfigRepository getRemoteConfigRepository() {
+        return remoteConfigRepository;
+    }
 }
