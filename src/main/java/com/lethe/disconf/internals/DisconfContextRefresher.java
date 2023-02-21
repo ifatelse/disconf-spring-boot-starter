@@ -2,12 +2,15 @@ package com.lethe.disconf.internals;
 
 import com.baidu.disconf.client.common.model.DisConfCommonModel;
 import com.baidu.disconf.client.common.model.DisconfCenterFile;
+import com.baidu.disconf.client.config.DisClientConfig;
 import com.baidu.disconf.client.config.DisClientSysConfig;
 import com.baidu.disconf.client.fetcher.FetcherMgr;
 import com.baidu.disconf.core.common.constants.Constants;
+import com.baidu.disconf.core.common.constants.DisConfigTypeEnum;
 import com.baidu.disconf.core.common.json.ValueVo;
 import com.baidu.disconf.core.common.path.DisconfWebPathMgr;
 import com.lethe.disconf.utils.DisconfThreadFactory;
+import com.lethe.disconf.utils.LoadFileUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.BeansException;
@@ -17,7 +20,6 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -41,8 +43,9 @@ public class DisconfContextRefresher implements ApplicationContextAware, Applica
 
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
-        for (Map.Entry<String, RemoteConfigRepository> listenerEntry : ConfigRepositoryManager.getInstance().listenerMap().entrySet()) {
-            executorService.execute(new LongPollingRunnable(listenerEntry.getKey(), listenerEntry.getValue()));
+        RemoteConfigRepository remoteConfigRepository = ConfigRepositoryManager.getInstance().getRemoteConfigRepository();
+        if (remoteConfigRepository != null) {
+            executorService.execute(new LongPollingRunnable(DisClientConfig.getInstance().APP, remoteConfigRepository));
         }
     }
 
@@ -67,8 +70,9 @@ public class DisconfContextRefresher implements ApplicationContextAware, Applica
 
                 ValueVo valueVo = fetcherMgr.getChangeFileFromServer(url);
                 if (Objects.equals(valueVo.getStatus(), Constants.CONFIG_CHANGE)) {
+                    String fileName = valueVo.getValue();
                     log.info("config changed: " + fileName);
-                    notifyChange(valueVo.getValue());
+                    notifyChange(fileName, configRepository);
                 }
                 executorService.execute(this);
 
@@ -81,9 +85,21 @@ public class DisconfContextRefresher implements ApplicationContextAware, Applica
     }
 
 
-    private void notifyChange(String fileName) {
-        ConfigRepositoryManager.getInstance().confChange(fileName);
-        applicationContext.publishEvent(new RefreshEvent(this, fileName, "Refresh Leconf Config"));
+    private void notifyChange(String fileName, RemoteConfigRepository configRepository) {
+        DisconfCenterFile disconfCenterFile = configRepository.disconfCenterFile;
+        String classPath = disconfCenterFile.getFileDir();
+        String url = assembleDownloadUrl(fileName, disconfCenterFile.getDisConfCommonModel());
+        FetcherMgr fetcherMgr = configRepository.fetcherMgr;
+        try {
+            fetcherMgr.downloadFileFromServer(url, fileName, classPath);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        if (LoadFileUtils.canLoadFileExtension(fileName)) {
+            ConfigRepositoryManager.getInstance().confChange(fileName);
+            applicationContext.publishEvent(new RefreshEvent(this, fileName, "Refresh Disconf Config"));
+        }
     }
 
     private String assembleLongPollUrl(String fileName, DisconfCenterFile disconfCenterFile) {
@@ -92,6 +108,13 @@ public class DisconfContextRefresher implements ApplicationContextAware, Applica
         String version = disConfCommonModel.getVersion();
         String env = disConfCommonModel.getEnv();
         return DisconfWebPathMgr.getRemoteUrlParameter(DisClientSysConfig.getInstance().CONF_SERVER_NOTIFY_ACTION, app, version, env, fileName);
+    }
+
+    private static String assembleDownloadUrl(String fileName, DisConfCommonModel disConfCommonModel) {
+        String app = disConfCommonModel.getApp();
+        String version = disConfCommonModel.getVersion();
+        String env = disConfCommonModel.getEnv();
+        return DisconfWebPathMgr.getRemoteUrlParameter(DisClientSysConfig.getInstance().CONF_SERVER_STORE_ACTION, app, version, env, fileName, DisConfigTypeEnum.FILE);
     }
 
 
