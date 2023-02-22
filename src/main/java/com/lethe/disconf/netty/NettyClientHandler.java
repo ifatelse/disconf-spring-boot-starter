@@ -60,11 +60,13 @@ public class NettyClientHandler extends ChannelDuplexHandler {
 
         ConfigQueryResponse configQueryResponse = GsonUtils.fromJson((String) msg, ConfigQueryResponse.class);
 
-        String classPath = ClassLoaderUtil.getClassPath();
+        // String classPath = ClassLoaderUtil.getClassPath();
+        //
+        // log.info("--------" + classPath);
+        //
+        // FileUtils.writeStringToFile(new File(classPath + "\\" + configQueryResponse.getFileName()), configQueryResponse.getValue());
 
-        log.info("--------" + classPath);
-
-        FileUtils.writeStringToFile(new File(classPath + "\\" + configQueryResponse.getFileName()), configQueryResponse.getValue());
+        DefaultFuture.received(ctx.channel(), configQueryResponse);
     }
 
     @Override

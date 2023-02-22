@@ -23,12 +23,15 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.util.StringUtils;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * @Description : 加载配置文件内容
- * @Author : liudd12
+ * @Author : Lethe
  * @Date : 2022/11/22 17:01
  * @Version : 1.0
  * @Copyright : Copyright (c) 2022 All Rights Reserved
@@ -65,19 +68,22 @@ public class DisconfApplicationContextInitializer implements ApplicationContextI
 
             FetcherMgr fetcherMgr = FetcherFactory.getFetcherMgr();
 
+            DisconfCenterFile disconfCenterFile = getDisconfCenterFile();
+
             for (String fileName : confLoadSet) {
-                DisconfCenterFile disconfCenterFile = getLeconfCenterFile(fileName);
-                String url = disconfCenterFile.getRemoteServerUrl();
+
+                String url = assembleDownloadUrl(fileName, disconfCenterFile.getDisConfCommonModel());
                 String classPath = disconfCenterFile.getFileDir();
                 // fetcherMgr.downloadFileFromServer(url, fileName, classPath);
 
                 NettyChannelService.loadDisconfData(fileName);
 
                 if (LoadFileUtils.canLoadFileExtension(fileName)) {
-                    ConfigRepositoryManager.getInstance().addListener(fileName, new RemoteConfigRepository(fetcherMgr, disconfCenterFile));
                     PropertySourceLoaderUtils.loadProperty(Collections.singletonList(DisconfProperties.CONF_PREFIX + fileName), environment);
                 }
             }
+
+            ConfigRepositoryManager.getInstance().loadRemoteConfigRepository(new RemoteConfigRepository(fetcherMgr, disconfCenterFile));
 
             log.info("load the remote config success");
 
@@ -99,6 +105,13 @@ public class DisconfApplicationContextInitializer implements ApplicationContextI
         return leconfCenterFile;
     }
 
+    public static DisconfCenterFile getDisconfCenterFile() {
+        DisconfCenterFile disconfCenterFile = new DisconfCenterFile();
+        DisConfCommonModel disConfCommonModel = makeDisConfCommonModel();
+        disconfCenterFile.setDisConfCommonModel(disConfCommonModel);
+        return disconfCenterFile;
+    }
+
 
     protected static DisConfCommonModel makeDisConfCommonModel() {
         DisConfCommonModel disConfCommonModel = new DisConfCommonModel();
@@ -106,6 +119,13 @@ public class DisconfApplicationContextInitializer implements ApplicationContextI
         disConfCommonModel.setEnv(DisClientConfig.getInstance().ENV);
         disConfCommonModel.setVersion(DisClientConfig.getInstance().VERSION);
         return disConfCommonModel;
+    }
+
+    private static String assembleDownloadUrl(String fileName, DisConfCommonModel disConfCommonModel) {
+        String app = disConfCommonModel.getApp();
+        String version = disConfCommonModel.getVersion();
+        String env = disConfCommonModel.getEnv();
+        return DisconfWebPathMgr.getRemoteUrlParameter(DisClientSysConfig.getInstance().CONF_SERVER_STORE_ACTION, app, version, env, fileName, DisConfigTypeEnum.FILE);
     }
 
 

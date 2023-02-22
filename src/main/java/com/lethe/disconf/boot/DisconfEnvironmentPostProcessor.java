@@ -1,10 +1,6 @@
 package com.lethe.disconf.boot;
 
-import com.baidu.disconf.client.common.model.DisConfCommonModel;
-import com.baidu.disconf.client.common.model.DisconfCenterFile;
-import com.baidu.disconf.client.fetcher.FetcherMgr;
 import com.lethe.disconf.internals.ConfigRepositoryManager;
-import com.lethe.disconf.internals.RemoteConfigRepository;
 import com.lethe.disconf.utils.PropertySourceLoaderUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -33,20 +29,6 @@ public class DisconfEnvironmentPostProcessor implements EnvironmentPostProcessor
         Queue<String> confQueue = ConfigRepositoryManager.getInstance().getconfChangeQueue();
         while (!confQueue.isEmpty()) {
             String fileName = confQueue.poll();
-            RemoteConfigRepository configRepository = ConfigRepositoryManager.getInstance().getChangeConfigRepository(fileName);
-            DisconfCenterFile disconfCenterFile = configRepository.disconfCenterFile;
-            // String fileName = disconfCenterFile.getFileName();
-            String classPath = disconfCenterFile.getFileDir();
-            DisConfCommonModel disConfCommonModel = disconfCenterFile.getDisConfCommonModel();
-            FetcherMgr fetcherMgr = configRepository.fetcherMgr;
-            // String url = DisconfWebPathMgr.getRemoteUrlParameter(DisClientSysConfig.getInstance().CONF_SERVER_STORE_ACTION, disConfCommonModel.getApp(), disConfCommonModel.getVersion(), disConfCommonModel.getEnv(), fileName, DisConfigTypeEnum.FILE);
-            String url = disconfCenterFile.getRemoteServerUrl();
-            try {
-                fetcherMgr.downloadFileFromServer(url, fileName, classPath);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-
             PropertySourceLoaderUtils.loadProperty(Collections.singletonList(DisconfProperties.CONF_PREFIX + fileName), environment);
 
         }

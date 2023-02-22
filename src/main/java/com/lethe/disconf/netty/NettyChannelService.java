@@ -2,14 +2,22 @@ package com.lethe.disconf.netty;
 
 import com.baidu.disconf.client.config.DisClientConfig;
 import com.baidu.disconf.core.common.remote.ConfigQueryRequest;
+import com.baidu.disconf.core.common.remote.ConfigQueryResponse;
+import com.baidu.disconf.core.common.utils.ClassLoaderUtil;
+import com.baidu.disconf.core.common.utils.FileUtils;
 import com.baidu.disconf.core.common.utils.GsonUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.CharsetUtil;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -21,6 +29,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * @Copyright : Copyright (c) 2023 All Rights Reserved
  **/
 public class NettyChannelService {
+
+    private static final Log log = LogFactory.getLog(NettyClientHandler.class);
 
     private static List<ChannelHandlerContext> clientChannelList = new CopyOnWriteArrayList<>();
 
@@ -42,6 +52,9 @@ public class NettyChannelService {
         configQueryRequest.setEnv(DisClientConfig.getInstance().ENV);
         configQueryRequest.setFileName(fileName);
         configQueryRequest.setMsgType(ConfigQueryRequest.class.getSimpleName());
+        configQueryRequest.setRequestId(UUID.randomUUID().toString());
+
+        DefaultFuture defaultFuture = new DefaultFuture(getChannel().channel(), configQueryRequest);
 
         ByteBuf data = Unpooled.wrappedBuffer(GsonUtils.toJson(configQueryRequest).getBytes(CharsetUtil.UTF_8));
         int length = data.readableBytes();
@@ -53,6 +66,19 @@ public class NettyChannelService {
         // writeBytes()方法用于写入消息内容。
 
         getChannel().channel().writeAndFlush(buffer);
+
+        ConfigQueryResponse response = (ConfigQueryResponse) defaultFuture.get();
+
+        String classPath = ClassLoaderUtil.getClassPath();
+
+        log.info("--------" + classPath);
+
+        try {
+            FileUtils.writeStringToFile(new File(classPath + "\\" + response.getFileName()), response.getValue());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
 

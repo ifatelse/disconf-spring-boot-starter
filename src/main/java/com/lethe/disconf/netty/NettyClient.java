@@ -7,6 +7,7 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
 import io.netty.handler.timeout.IdleStateHandler;
@@ -43,6 +44,7 @@ public class NettyClient {
                     @Override
                     protected void initChannel(Channel channel) throws Exception {
                         channel.pipeline()
+                                .addLast("lengthFieldBasedFrameDecoder", new LengthFieldBasedFrameDecoder(1024,0,2,0,2))
                                 .addLast("decoder", new StringDecoder())
                                 .addLast("encoder", new StringEncoder())
                                 .addLast("client-idle-handler", new IdleStateHandler(0, 0, 5, TimeUnit.SECONDS))
@@ -50,7 +52,7 @@ public class NettyClient {
                     }
                 });
 
-        bootstrap.connect(new InetSocketAddress("127.0.0.1", 10010 + 1000)).addListener(future -> {
+        bootstrap.connect(new InetSocketAddress("grpc.lethe.com", 10010 + 1000)).addListener(future -> {
             if (future.isSuccess()) {
                 log.info("Netty Client Connect Success!");
             } else {
