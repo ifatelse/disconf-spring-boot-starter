@@ -101,6 +101,8 @@ public class DisconfContextRefresher implements ApplicationContextAware, Applica
             ConfigRepositoryManager.getInstance().confChange(fileName);
             applicationContext.publishEvent(new RefreshEvent(this, fileName, "Refresh Leconf Config"));
         }
+
+        applicationContext.publishEvent(new ConfigChangeEvent(this, fileName));
     }
 
     private String assembleLongPollUrl(String fileName, DisconfCenterFile disconfCenterFile) {
