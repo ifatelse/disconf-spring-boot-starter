@@ -1,6 +1,7 @@
 package com.lethe.disconf.netty;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -32,13 +33,15 @@ public class NettyClient {
 
         Bootstrap bootstrap = new Bootstrap();
 
-        EventLoopGroup group = new NioEventLoopGroup();
+        EventLoopGroup group = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors());
 
         final NettyClientHandler nettyClientHandler = new NettyClientHandler();
 
         bootstrap.group(group)
+                .option(ChannelOption.TCP_NODELAY, true)
                 .option(ChannelOption.SO_KEEPALIVE, true)
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
+                .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 15000)
                 .channel(NioSocketChannel.class)
                 .handler(new ChannelInitializer<Channel>() {
                     @Override
@@ -47,12 +50,12 @@ public class NettyClient {
                                 .addLast("lengthFieldBasedFrameDecoder", new LengthFieldBasedFrameDecoder(1024,0,2,0,2))
                                 .addLast("decoder", new StringDecoder())
                                 .addLast("encoder", new StringEncoder())
-                                .addLast("client-idle-handler", new IdleStateHandler(0, 0, 5, TimeUnit.SECONDS))
+                                .addLast("client-idle-handler", new IdleStateHandler(0, 0, 10, TimeUnit.SECONDS))
                                 .addLast(nettyClientHandler);
                     }
                 });
 
-        bootstrap.connect(new InetSocketAddress("grpc.lethe.com", 10010 + 1000)).addListener(future -> {
+        bootstrap.connect(new InetSocketAddress("127.0.0.1", 10010 + 1000)).addListener(future -> {
             if (future.isSuccess()) {
                 log.info("Netty Client Connect Success!");
             } else {

@@ -1,24 +1,23 @@
 package com.lethe.disconf.netty;
 
-import com.baidu.disconf.client.config.DisClientConfig;
-import com.baidu.disconf.core.common.remote.ConfigQueryRequest;
-import com.baidu.disconf.core.common.remote.ConfigQueryResponse;
+import com.baidu.disconf.client.common.model.DisConfCommonModel;
+import com.baidu.disconf.core.common.remote.*;
 import com.baidu.disconf.core.common.utils.ClassLoaderUtil;
 import com.baidu.disconf.core.common.utils.FileUtils;
 import com.baidu.disconf.core.common.utils.GsonUtils;
+import com.lethe.disconf.internals.ConfigRepositoryManager;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.CharsetUtil;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -43,20 +42,53 @@ public class NettyChannelService {
         return clientChannelList.get(0);
     }
 
+    static {
+        ResponseRegistry.init();
+    }
 
-    public static void loadDisconfData(String fileName){
+
+    public static void loadDisconfData(String fileName, DisConfCommonModel disConfCommonModel){
 
         ConfigQueryRequest configQueryRequest = new ConfigQueryRequest();
-        configQueryRequest.setAppName(DisClientConfig.getInstance().APP);
-        configQueryRequest.setVersion(DisClientConfig.getInstance().VERSION);
-        configQueryRequest.setEnv(DisClientConfig.getInstance().ENV);
+        configQueryRequest.setAppName(disConfCommonModel.getApp());
+        configQueryRequest.setVersion(disConfCommonModel.getVersion());
+        configQueryRequest.setEnv(disConfCommonModel.getEnv());
         configQueryRequest.setFileName(fileName);
         configQueryRequest.setMsgType(ConfigQueryRequest.class.getSimpleName());
         configQueryRequest.setRequestId(UUID.randomUUID().toString());
 
         DefaultFuture defaultFuture = new DefaultFuture(getChannel().channel(), configQueryRequest);
 
-        ByteBuf data = Unpooled.wrappedBuffer(GsonUtils.toJson(configQueryRequest).getBytes(CharsetUtil.UTF_8));
+        sendMsg(configQueryRequest);
+
+        ConfigQueryResponse response = (ConfigQueryResponse) defaultFuture.get();
+
+        String classPath = ClassLoaderUtil.getClassPath();
+
+        try {
+            FileUtils.writeStringToFile(new File(classPath + "\\" + response.getFileName()), response.getValue());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    public static void executeConfigListen(String fileName, DisConfCommonModel disConfCommonModel) {
+
+        ConfigChangeRequest configChangeRequest = new ConfigChangeRequest();
+        configChangeRequest.setAppName(disConfCommonModel.getApp());
+        configChangeRequest.setVersion(disConfCommonModel.getVersion());
+        configChangeRequest.setEnv(disConfCommonModel.getEnv());
+        configChangeRequest.setFileName(fileName);
+        configChangeRequest.setRequestId("");
+        configChangeRequest.setMsgType(ConfigChangeRequest.class.getSimpleName());
+
+        sendMsg(configChangeRequest);
+
+    }
+
+    private static void sendMsg(Request request) {
+        ByteBuf data = Unpooled.wrappedBuffer(GsonUtils.toJson(request).getBytes(CharsetUtil.UTF_8));
         int length = data.readableBytes();
         ByteBuf buffer = Unpooled.buffer(2 + length);
         buffer.writeShort(length);
@@ -66,18 +98,31 @@ public class NettyChannelService {
         // writeBytes()方法用于写入消息内容。
 
         getChannel().channel().writeAndFlush(buffer);
+    }
 
-        ConfigQueryResponse response = (ConfigQueryResponse) defaultFuture.get();
 
-        String classPath = ClassLoaderUtil.getClassPath();
-
-        log.info("--------" + classPath);
-
-        try {
-            FileUtils.writeStringToFile(new File(classPath + "\\" + response.getFileName()), response.getValue());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+    public static void receivedChangeResponse(Response response) {
+        ConfigChangeResponse configChangeResponse = (ConfigChangeResponse) response;
+        String fileName = configChangeResponse.getFileName();
+        if (StringUtils.isBlank(fileName)) {
+            return;
         }
+
+        DisConfCommonModel disConfCommonModel = ConfigRepositoryManager.getInstance().getRemoteConfigRepository().disconfCenterFile.getDisConfCommonModel();
+
+        ConfigQueryRequest configQueryRequest = new ConfigQueryRequest();
+        configQueryRequest.setAppName(disConfCommonModel.getApp());
+        configQueryRequest.setVersion(disConfCommonModel.getVersion());
+        configQueryRequest.setEnv(disConfCommonModel.getEnv());
+        configQueryRequest.setFileName(fileName);
+        configQueryRequest.setMsgType(ConfigQueryRequest.class.getSimpleName());
+        configQueryRequest.setRequestId(UUID.randomUUID().toString());
+
+        loadDisconfData(fileName, disConfCommonModel);
+
+        // sendMsg(configQueryRequest);
+
+        System.out.println("===加载环境变量===");
 
     }
 

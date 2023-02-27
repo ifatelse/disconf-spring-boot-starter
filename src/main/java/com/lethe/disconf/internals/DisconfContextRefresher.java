@@ -9,6 +9,7 @@ import com.baidu.disconf.core.common.constants.Constants;
 import com.baidu.disconf.core.common.constants.DisConfigTypeEnum;
 import com.baidu.disconf.core.common.json.ValueVo;
 import com.baidu.disconf.core.common.path.DisconfWebPathMgr;
+import com.lethe.disconf.netty.NettyChannelService;
 import com.lethe.disconf.utils.DisconfThreadFactory;
 import com.lethe.disconf.utils.LoadFileUtils;
 import org.apache.commons.logging.Log;
@@ -45,8 +46,27 @@ public class DisconfContextRefresher implements ApplicationContextAware, Applica
     public void onApplicationEvent(ContextRefreshedEvent event) {
         RemoteConfigRepository remoteConfigRepository = ConfigRepositoryManager.getInstance().getRemoteConfigRepository();
         if (remoteConfigRepository != null) {
-            executorService.execute(new LongPollingRunnable(DisClientConfig.getInstance().APP, remoteConfigRepository));
+            // executorService.execute(new LongPollingRunnable(DisClientConfig.getInstance().APP, remoteConfigRepository));
+            executorService.execute(new ExecuteConfigListen(DisClientConfig.getInstance().APP, remoteConfigRepository));
         }
+    }
+
+    class ExecuteConfigListen implements Runnable {
+
+        private final String fileName;
+
+        private final RemoteConfigRepository configRepository;
+
+        public ExecuteConfigListen(String fileName, RemoteConfigRepository configRepository) {
+            this.fileName = fileName;
+            this.configRepository = configRepository;
+        }
+
+        @Override
+        public void run() {
+            NettyChannelService.executeConfigListen(fileName, configRepository.disconfCenterFile.getDisConfCommonModel());
+        }
+
     }
 
 

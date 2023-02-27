@@ -76,7 +76,7 @@ public class DisconfApplicationContextInitializer implements ApplicationContextI
                 String classPath = disconfCenterFile.getFileDir();
                 // fetcherMgr.downloadFileFromServer(url, fileName, classPath);
 
-                NettyChannelService.loadDisconfData(fileName);
+                NettyChannelService.loadDisconfData(fileName, disconfCenterFile.getDisConfCommonModel());
 
                 if (LoadFileUtils.canLoadFileExtension(fileName)) {
                     PropertySourceLoaderUtils.loadProperty(Collections.singletonList(DisconfProperties.CONF_PREFIX + fileName), environment);

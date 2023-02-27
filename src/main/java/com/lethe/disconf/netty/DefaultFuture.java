@@ -33,7 +33,7 @@ public class DefaultFuture {
     private final Lock lock = new ReentrantLock();
     private final Condition done = lock.newCondition();
 
-    private int timeout = 3000;
+    private int timeout = 10000;
 
     public DefaultFuture(Channel channel, Request request) {
         this.channel = channel;
@@ -84,9 +84,14 @@ public class DefaultFuture {
     }
 
     public static void received(Channel channel, Response response) {
-        DefaultFuture future = FUTURES.remove(response.getRequestId());
-        future.doReceived(response);
-        CHANNELS.remove(response.getRequestId());
+        try {
+            DefaultFuture future = FUTURES.remove(response.getRequestId());
+            if (future != null) {
+                future.doReceived(response);
+            }
+        } finally {
+            CHANNELS.remove(response.getRequestId());
+        }
     }
 
     private void doReceived(Response res) {
