@@ -3,15 +3,13 @@ package com.lethe.disconf.netty;
 import com.baidu.disconf.core.common.remote.ConfigChangeResponse;
 import com.baidu.disconf.core.common.remote.ConfigQueryResponse;
 import com.baidu.disconf.core.common.remote.HeartBeatRequest;
+import com.baidu.disconf.core.common.remote.Message;
 import com.baidu.disconf.core.common.utils.GsonUtils;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.timeout.IdleStateEvent;
-import io.netty.util.CharsetUtil;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -44,7 +42,7 @@ public class NettyClientHandler extends ChannelDuplexHandler {
         String address = toAddressString((InetSocketAddress) ctx.channel().remoteAddress());
         log.info("与服务端:" + address + ",建立连接成功");
 
-        NettyChannelService.saveChannel(ctx);
+        NettyChannelClient.saveChannel(ctx);
 
         // ConfigQueryRequest configQueryRequest = new ConfigQueryRequest();
         // configQueryRequest.setAppName(DisClientConfig.getInstance().APP);
@@ -59,7 +57,7 @@ public class NettyClientHandler extends ChannelDuplexHandler {
     }
 
     private void startHeartbeatTimer(ChannelHandlerContext ctx) {
-        scheduled.scheduleWithFixedDelay(new HeartBeatTask(ctx),1000, 9000, TimeUnit.MILLISECONDS);
+        scheduled.scheduleWithFixedDelay(new HeartBeatTask(ctx),1000, 10000, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -84,7 +82,7 @@ public class NettyClientHandler extends ChannelDuplexHandler {
 
         if (Objects.equals(msgType, ConfigChangeResponse.class.getSimpleName())) {
             ConfigChangeResponse response = GsonUtils.fromJson((String) msg, ConfigChangeResponse.class);
-            NettyChannelService.receivedChangeResponse(response);
+            NettyChannelClient.receivedChangeResponse(response);
         }
 
     }
@@ -126,15 +124,20 @@ public class NettyClientHandler extends ChannelDuplexHandler {
         @Override
         public void run() {
             HeartBeatRequest heartBeatRequest = new HeartBeatRequest();
-            heartBeatRequest.setMsgType(HeartBeatRequest.class.getSimpleName());
 
-            ByteBuf data = Unpooled.wrappedBuffer(GsonUtils.toJson(heartBeatRequest).getBytes(CharsetUtil.UTF_8));
-            int length = data.readableBytes();
-            ByteBuf buffer = Unpooled.buffer(2 + length);
-            buffer.writeShort(length);
-            buffer.writeBytes(data);
+            Message message = new Message();
+            // message.setRequestId("");
+            message.setMsgType(HeartBeatRequest.class.getSimpleName());
+            message.setData(heartBeatRequest);
 
-            ctx.channel().writeAndFlush(buffer);
+
+            // ByteBuf data = Unpooled.wrappedBuffer(GsonUtils.toJson(message).getBytes(CharsetUtil.UTF_8));
+            // int length = data.readableBytes();
+            // ByteBuf buffer = Unpooled.buffer(2 + length);
+            // buffer.writeShort(length);
+            // buffer.writeBytes(data);
+
+            ctx.channel().writeAndFlush(message);
         }
     }
 }

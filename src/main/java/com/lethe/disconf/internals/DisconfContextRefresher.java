@@ -5,11 +5,13 @@ import com.baidu.disconf.client.common.model.DisconfCenterFile;
 import com.baidu.disconf.client.config.DisClientConfig;
 import com.baidu.disconf.client.config.DisClientSysConfig;
 import com.baidu.disconf.client.fetcher.FetcherMgr;
+import com.baidu.disconf.client.watch.netty.NettyChannelExchanger;
+import com.baidu.disconf.client.watch.netty.ResponseMessageHandler;
 import com.baidu.disconf.core.common.constants.Constants;
 import com.baidu.disconf.core.common.constants.DisConfigTypeEnum;
 import com.baidu.disconf.core.common.json.ValueVo;
 import com.baidu.disconf.core.common.path.DisconfWebPathMgr;
-import com.lethe.disconf.netty.NettyChannelService;
+import com.lethe.disconf.netty.NettyChannelClient;
 import com.lethe.disconf.utils.DisconfThreadFactory;
 import com.lethe.disconf.utils.LoadFileUtils;
 import org.apache.commons.logging.Log;
@@ -39,34 +41,22 @@ public class DisconfContextRefresher implements ApplicationContextAware, Applica
 
     private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors(), DisconfThreadFactory.create("RemoteConfigLongPollService", true));
 
-
     private ApplicationContext applicationContext;
 
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
         RemoteConfigRepository remoteConfigRepository = ConfigRepositoryManager.getInstance().getRemoteConfigRepository();
         if (remoteConfigRepository != null) {
-            // executorService.execute(new LongPollingRunnable(DisClientConfig.getInstance().APP, remoteConfigRepository));
-            executorService.execute(new ExecuteConfigListen(DisClientConfig.getInstance().APP, remoteConfigRepository));
+            String type = applicationContext.getEnvironment().getProperty("listen_type", "http");
+            log.info("listen config change type: " + type);
+
+            if (Objects.equals(type, Constants.LISTEN_TYPE_HTTP)) {
+                executorService.execute(new LongPollingRunnable(DisClientConfig.getInstance().APP, remoteConfigRepository));
+            } else {
+                NettyChannelExchanger.connect("127.0.0.1", Constants.NETTY_PORT, new ResponseMessageHandler(), new ConfigChangeResponseHandler(applicationContext));
+                NettyChannelExchanger.executeConfigListen(DisClientConfig.getInstance().APP, remoteConfigRepository.disconfCenterFile.getDisConfCommonModel());
+            }
         }
-    }
-
-    class ExecuteConfigListen implements Runnable {
-
-        private final String fileName;
-
-        private final RemoteConfigRepository configRepository;
-
-        public ExecuteConfigListen(String fileName, RemoteConfigRepository configRepository) {
-            this.fileName = fileName;
-            this.configRepository = configRepository;
-        }
-
-        @Override
-        public void run() {
-            NettyChannelService.executeConfigListen(fileName, configRepository.disconfCenterFile.getDisConfCommonModel());
-        }
-
     }
 
 
