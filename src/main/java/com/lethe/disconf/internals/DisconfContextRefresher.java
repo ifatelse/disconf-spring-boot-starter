@@ -53,8 +53,8 @@ public class DisconfContextRefresher implements ApplicationContextAware, Applica
             if (Objects.equals(type, Constants.LISTEN_TYPE_HTTP)) {
                 executorService.execute(new LongPollingRunnable(DisClientConfig.getInstance().APP, remoteConfigRepository));
             } else {
-                NettyChannelExchanger.connect("127.0.0.1", Constants.NETTY_PORT, new ResponseMessageHandler(), new ConfigChangeResponseHandler(applicationContext));
-                NettyChannelExchanger.executeConfigListen(DisClientConfig.getInstance().APP, remoteConfigRepository.disconfCenterFile.getDisConfCommonModel());
+                NettyChannelExchanger nettyChannelExchanger = new NettyChannelExchanger("127.0.0.1", Constants.NETTY_PORT, new ConfigChangeResponseHandler(applicationContext));
+                nettyChannelExchanger.executeConfigListen(DisClientConfig.getInstance().APP, remoteConfigRepository.disconfCenterFile.getDisConfCommonModel());
             }
         }
     }
