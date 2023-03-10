@@ -6,12 +6,10 @@ import com.baidu.disconf.client.config.DisClientConfig;
 import com.baidu.disconf.client.config.DisClientSysConfig;
 import com.baidu.disconf.client.fetcher.FetcherMgr;
 import com.baidu.disconf.client.watch.netty.NettyChannelExchanger;
-import com.baidu.disconf.client.watch.netty.ResponseMessageHandler;
 import com.baidu.disconf.core.common.constants.Constants;
 import com.baidu.disconf.core.common.constants.DisConfigTypeEnum;
 import com.baidu.disconf.core.common.json.ValueVo;
 import com.baidu.disconf.core.common.path.DisconfWebPathMgr;
-import com.lethe.disconf.netty.NettyChannelClient;
 import com.lethe.disconf.utils.DisconfThreadFactory;
 import com.lethe.disconf.utils.LoadFileUtils;
 import org.apache.commons.logging.Log;
@@ -47,7 +45,7 @@ public class DisconfContextRefresher implements ApplicationContextAware, Applica
     public void onApplicationEvent(ContextRefreshedEvent event) {
         RemoteConfigRepository remoteConfigRepository = ConfigRepositoryManager.getInstance().getRemoteConfigRepository();
         if (remoteConfigRepository != null) {
-            String type = applicationContext.getEnvironment().getProperty("listen_type", "http");
+            String type = applicationContext.getEnvironment().getProperty("listen.type", "http");
             log.info("listen config change type: " + type);
 
             if (Objects.equals(type, Constants.LISTEN_TYPE_HTTP)) {
