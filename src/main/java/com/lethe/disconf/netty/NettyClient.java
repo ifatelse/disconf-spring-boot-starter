@@ -1,14 +1,11 @@
 package com.lethe.disconf.netty;
 
-import com.baidu.disconf.core.common.remote.MessageCodec;
+import com.baidu.disconf.core.common.remote.netty.MessageCodec;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
-import io.netty.handler.codec.string.StringDecoder;
-import io.netty.handler.codec.string.StringEncoder;
 import io.netty.handler.timeout.IdleStateHandler;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -33,8 +30,7 @@ public class NettyClient {
 
         EventLoopGroup group = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors());
 
-        final NettyClientHandler nettyClientHandler = new NettyClientHandler();
-
+        final NettyClientHandler nettyClientHandler = new NettyClientHandler(null);
 
         bootstrap.group(group)
                 .option(ChannelOption.TCP_NODELAY, true)

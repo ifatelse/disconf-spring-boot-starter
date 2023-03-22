@@ -1,5 +1,6 @@
 package com.lethe.disconf.internals;
 
+import com.baidu.disconf.client.common.model.DisconfCenterFile;
 import com.google.common.collect.Queues;
 
 import java.lang.reflect.Field;
@@ -14,8 +15,7 @@ import java.util.Queue;
  **/
 public class ConfigRepositoryManager {
 
-    private final RemoteConfigRepository remoteConfigRepository = null;
-
+    public DisconfCenterFile disconfCenterFile = null;
 
     private final Queue<String> confChangeQueue = Queues.newConcurrentLinkedQueue();
 
@@ -34,17 +34,17 @@ public class ConfigRepositoryManager {
         return confChangeQueue;
     }
 
-    public void loadRemoteConfigRepository(RemoteConfigRepository remoteConfigRepository){
+    public void loadDisconfCenterFile(DisconfCenterFile disconfCenterFile){
         try {
-            Field field = INSTANCE.getClass().getDeclaredField("remoteConfigRepository");
+            Field field = INSTANCE.getClass().getDeclaredField("disconfCenterFile");
             field.setAccessible(true);
-            field.set(INSTANCE, remoteConfigRepository);
+            field.set(INSTANCE, disconfCenterFile);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public RemoteConfigRepository getRemoteConfigRepository() {
-        return remoteConfigRepository;
+    public DisconfCenterFile getDisconfCenterFile() {
+        return disconfCenterFile;
     }
 }

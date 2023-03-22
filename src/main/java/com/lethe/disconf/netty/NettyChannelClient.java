@@ -2,6 +2,7 @@ package com.lethe.disconf.netty;
 
 import com.baidu.disconf.client.common.model.DisConfCommonModel;
 import com.baidu.disconf.core.common.remote.*;
+import com.baidu.disconf.core.common.remote.netty.Message;
 import com.baidu.disconf.core.common.utils.ClassLoaderUtil;
 import com.baidu.disconf.core.common.utils.FileUtils;
 import com.lethe.disconf.internals.ConfigRepositoryManager;

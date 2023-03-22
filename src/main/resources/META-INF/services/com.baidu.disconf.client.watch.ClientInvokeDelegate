@@ -1,0 +1,3 @@
+http=com.lethe.disconf.client.HttpClientInvoke
+netty=com.lethe.disconf.client.NettyClientInvoke
+grpc=com.lethe.disconf.client.GrpcClientInvoke

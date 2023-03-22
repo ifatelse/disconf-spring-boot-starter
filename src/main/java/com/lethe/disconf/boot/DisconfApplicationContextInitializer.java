@@ -6,12 +6,11 @@ import com.baidu.disconf.client.common.model.DisconfCenterFile;
 import com.baidu.disconf.client.config.ConfigMgr;
 import com.baidu.disconf.client.config.DisClientConfig;
 import com.baidu.disconf.client.config.DisClientSysConfig;
-import com.baidu.disconf.client.fetcher.FetcherFactory;
-import com.baidu.disconf.client.fetcher.FetcherMgr;
+import com.baidu.disconf.client.watch.ClientInvokeDelegate;
 import com.baidu.disconf.core.common.constants.DisConfigTypeEnum;
 import com.baidu.disconf.core.common.path.DisconfWebPathMgr;
+import com.lethe.disconf.extension.ExtensionLoader;
 import com.lethe.disconf.internals.ConfigRepositoryManager;
-import com.lethe.disconf.internals.RemoteConfigRepository;
 import com.lethe.disconf.utils.LoadFileUtils;
 import com.lethe.disconf.utils.PropertySourceLoaderUtils;
 import org.apache.commons.logging.Log;
@@ -21,10 +20,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.util.StringUtils;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -62,21 +58,22 @@ public class DisconfApplicationContextInitializer implements ApplicationContextI
                 return;
             }
 
-            FetcherMgr fetcherMgr = FetcherFactory.getFetcherMgr();
-
             DisconfCenterFile disconfCenterFile = getDisconfCenterFile();
+
+            ConfigRepositoryManager.getInstance().loadDisconfCenterFile(disconfCenterFile);
+
+            String type = applicationContext.getEnvironment().getProperty("client.type", "http");
+            ExtensionLoader<ClientInvokeDelegate> extensionLoader = ExtensionLoader.getExtensionLoader(ClientInvokeDelegate.class);
+            ClientInvokeDelegate clientInvokeDelegate = extensionLoader.getAdaptiveExtension(type);
 
             for (String fileName : confLoadSet) {
 
-                String url = assembleDownloadUrl(fileName, disconfCenterFile.getDisConfCommonModel());
-                String classPath = disconfCenterFile.getFileDir();
-                fetcherMgr.downloadFileFromServer(url, fileName, classPath);
+                clientInvokeDelegate.configLoad(fileName);
+
                 if (LoadFileUtils.canLoadFileExtension(fileName)) {
                     PropertySourceLoaderUtils.loadProperty(Collections.singletonList(DisconfProperties.CONF_PREFIX + fileName), environment);
                 }
             }
-
-            ConfigRepositoryManager.getInstance().loadRemoteConfigRepository(new RemoteConfigRepository(fetcherMgr, disconfCenterFile));
 
             log.info("load the remote config success");
 

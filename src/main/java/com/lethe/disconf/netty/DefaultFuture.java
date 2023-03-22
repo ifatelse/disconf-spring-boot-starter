@@ -4,6 +4,8 @@ import com.baidu.disconf.core.common.remote.Request;
 import com.baidu.disconf.core.common.remote.Response;
 import io.netty.channel.Channel;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,6 +23,8 @@ import java.util.concurrent.locks.ReentrantLock;
  **/
 public class DefaultFuture {
 
+    private static final Logger logger = LoggerFactory.getLogger(DefaultFuture.class);
+
     private static final Map<String, Channel> CHANNELS = new ConcurrentHashMap<>();
 
     private static final Map<String, DefaultFuture> FUTURES = new ConcurrentHashMap<>();
@@ -30,10 +34,18 @@ public class DefaultFuture {
     private final String requestId;
     private volatile Response response;
 
+    private final long start = System.currentTimeMillis();
+
     private final Lock lock = new ReentrantLock();
     private final Condition done = lock.newCondition();
 
     private int timeout = 10000;
+
+    static {
+        Thread th = new Thread(new FutureTimeoutScan(), "ResponseTimeoutScanTimer");
+        th.setDaemon(true);
+        th.start();
+    }
 
     public DefaultFuture(Channel channel, Request request) {
         this.channel = channel;
@@ -79,7 +91,7 @@ public class DefaultFuture {
             return res;
         }
 
-        throw new RuntimeException("异常");
+        throw new RuntimeException(res.getMessage());
 
     }
 
@@ -108,6 +120,54 @@ public class DefaultFuture {
 
     public boolean isDone() {
         return response != null;
+    }
+
+
+
+    private static class FutureTimeoutScan implements Runnable {
+
+        @Override
+        public void run() {
+            while (true) {
+                try {
+                    // 扫描FUTURES
+                    for (DefaultFuture future : FUTURES.values()) {
+                        if (future == null || future.isDone()) {
+                            continue;
+                        }
+                        // 如果future未完成，且超时
+                        if (System.currentTimeMillis() - future.getStartTimestamp() > future.getTimeout()) {
+                            // create exception response.
+                            Response timeoutResponse = new Response();
+                            timeoutResponse.setRequestId(future.getRequestId());
+                            timeoutResponse.setErrorCode("10010");
+                            timeoutResponse.setMessage(", channel: " + future.getChannel() + "TimeOut");
+                            // handle response.
+                            DefaultFuture.received(future.getChannel(), timeoutResponse);
+                        }
+                    }
+                    Thread.sleep(30);
+                } catch (Throwable e) {
+                    logger.error("Exception when scan the timeout invocation of remoting.", e);
+                }
+            }
+        }
+    }
+
+    public Channel getChannel() {
+        return channel;
+    }
+
+    public String getRequestId() {
+        return requestId;
+    }
+
+    private long getStartTimestamp() {
+        return start;
+    }
+
+    private int getTimeout() {
+        return timeout;
     }
 
 }

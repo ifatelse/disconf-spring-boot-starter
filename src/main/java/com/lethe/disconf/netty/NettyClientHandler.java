@@ -1,23 +1,29 @@
 package com.lethe.disconf.netty;
 
+import com.baidu.disconf.client.common.model.DisconfCenterFile;
 import com.baidu.disconf.core.common.remote.ConfigChangeResponse;
+import com.baidu.disconf.core.common.remote.ConfigQueryRequest;
 import com.baidu.disconf.core.common.remote.ConfigQueryResponse;
 import com.baidu.disconf.core.common.remote.HeartBeatRequest;
-import com.baidu.disconf.core.common.remote.Message;
+import com.baidu.disconf.core.common.remote.netty.Message;
+import com.baidu.disconf.core.common.utils.ClassLoaderUtil;
+import com.baidu.disconf.core.common.utils.FileUtils;
 import com.baidu.disconf.core.common.utils.GsonUtils;
-import io.netty.channel.ChannelDuplexHandler;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
+import com.lethe.disconf.client.NettyClientInvoke;
+import com.lethe.disconf.internals.ConfigRepositoryManager;
+import io.netty.channel.*;
+import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.Date;
-import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -36,53 +42,56 @@ public class NettyClientHandler extends ChannelDuplexHandler {
     private static final ScheduledThreadPoolExecutor scheduled = new ScheduledThreadPoolExecutor(1,
             new DefaultThreadFactory("client-heartbeat", true));
 
+    private NettyClientInvoke nettyClientInvoke;
+
+    public NettyClientHandler(NettyClientInvoke nettyClientInvoke) {
+        this.nettyClientInvoke = nettyClientInvoke;
+    }
+
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-
         String address = toAddressString((InetSocketAddress) ctx.channel().remoteAddress());
         log.info("与服务端:" + address + ",建立连接成功");
-
-        NettyChannelClient.saveChannel(ctx);
-
-        // ConfigQueryRequest configQueryRequest = new ConfigQueryRequest();
-        // configQueryRequest.setAppName(DisClientConfig.getInstance().APP);
-        // configQueryRequest.setVersion(DisClientConfig.getInstance().VERSION);
-        // configQueryRequest.setEnv(DisClientConfig.getInstance().ENV);
-        // configQueryRequest.setFileName("config.yml");
-        // configQueryRequest.setMsgType(ConfigQueryRequest.class.getSimpleName());
-        //
-        // ctx.channel().writeAndFlush(GsonUtils.toJson(configQueryRequest));
-
         startHeartbeatTimer(ctx);
     }
 
     private void startHeartbeatTimer(ChannelHandlerContext ctx) {
-        scheduled.scheduleWithFixedDelay(new HeartBeatTask(ctx),1000, 10000, TimeUnit.MILLISECONDS);
+        scheduled.scheduleWithFixedDelay(new HeartBeatTask(ctx), 10000, 10000, TimeUnit.MILLISECONDS);
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-
+        ctx.fireChannelInactive();
     }
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         log.info("接受到服务端消息：" + msg);
 
-        Map<String, Object> objectMap = GsonUtils.toObjectMap((String) msg);
-
-        String msgType = (String) objectMap.get("msgType");
-
-        // Class<?> classType = ResponseRegistry.getClassByType(msgType);
+        Message message = (Message) msg;
+        String msgType = message.getMsgType();
 
         if (Objects.equals(msgType, ConfigQueryResponse.class.getSimpleName())) {
-            ConfigQueryResponse response = GsonUtils.fromJson((String) msg, ConfigQueryResponse.class);
-            DefaultFuture.received(ctx.channel(), response);
+            ConfigQueryResponse response = GsonUtils.fromJson(GsonUtils.toJson(message.getData()), ConfigQueryResponse.class);
+            if (response.getEvent().equals("loadQuery")) {
+                DefaultFuture.received(ctx.channel(), response);
+            } else {
+                nettyClientInvoke.configChange(response);
+            }
+
         }
 
         if (Objects.equals(msgType, ConfigChangeResponse.class.getSimpleName())) {
-            ConfigChangeResponse response = GsonUtils.fromJson((String) msg, ConfigChangeResponse.class);
-            NettyChannelClient.receivedChangeResponse(response);
+            ConfigChangeResponse response = GsonUtils.fromJson(GsonUtils.toJson(message.getData()), ConfigChangeResponse.class);
+            // NettyChannelClient.receivedChangeResponse(response);
+
+            String fileName = response.getFileName();
+
+            if (StringUtils.isBlank(fileName)) {
+                return;
+            }
+
+            nettyClientInvoke.configChange(fileName);
         }
 
     }
@@ -92,20 +101,9 @@ public class NettyClientHandler extends ChannelDuplexHandler {
         super.write(ctx, msg, promise);
     }
 
-    @Override
-    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-        // send heartbeat when read idle.
-        if (evt instanceof IdleStateEvent) {
-            log.info("已经5秒未收到服务端的消息了！" + new Date());
-        } else {
-            super.userEventTriggered(ctx, evt);
-        }
-    }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        String address = toAddressString((InetSocketAddress) ctx.channel().remoteAddress());
-        log.error(address + "-----" + ctx.channel().isActive() + "----------" + cause);
         super.exceptionCaught(ctx, cause);
     }
 
@@ -124,20 +122,11 @@ public class NettyClientHandler extends ChannelDuplexHandler {
         @Override
         public void run() {
             HeartBeatRequest heartBeatRequest = new HeartBeatRequest();
-
             Message message = new Message();
-            // message.setRequestId("");
             message.setMsgType(HeartBeatRequest.class.getSimpleName());
             message.setData(heartBeatRequest);
-
-
-            // ByteBuf data = Unpooled.wrappedBuffer(GsonUtils.toJson(message).getBytes(CharsetUtil.UTF_8));
-            // int length = data.readableBytes();
-            // ByteBuf buffer = Unpooled.buffer(2 + length);
-            // buffer.writeShort(length);
-            // buffer.writeBytes(data);
-
             ctx.channel().writeAndFlush(message);
         }
     }
+
 }
