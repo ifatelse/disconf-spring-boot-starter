@@ -109,7 +109,7 @@ public class NettyChannelClient {
             return;
         }
 
-        DisConfCommonModel disConfCommonModel = ConfigRepositoryManager.getInstance().getRemoteConfigRepository().disconfCenterFile.getDisConfCommonModel();
+        DisConfCommonModel disConfCommonModel = ConfigRepositoryManager.getInstance().getDisconfCenterFile().getDisConfCommonModel();
 
         ConfigQueryRequest configQueryRequest = new ConfigQueryRequest();
         configQueryRequest.setAppName(disConfCommonModel.getApp());
