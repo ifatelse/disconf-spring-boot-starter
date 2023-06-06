@@ -9,6 +9,7 @@ import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.io.support.SpringFactoriesLoader;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
@@ -46,6 +47,27 @@ public class PropertySourceLoaderUtils {
                 }
             }
         }
+    }
+
+    public static List<PropertySource<?>> loadProperty(String conf) {
+        try {
+            for (PropertySourceLoader propertySourceLoader : propertySourceLoaders) {
+                if (canLoadFileExtension(propertySourceLoader, conf)) {
+                    Resource resource = resourceLoader.getResource(conf);
+                    if (!resource.exists()) {
+                        throw new IllegalArgumentException(conf + " does not exist");
+                    }
+                    List<PropertySource<?>> propertySources = propertySourceLoader.load(conf, resource);
+                    if (CollectionUtils.isEmpty(propertySources)) {
+                        propertySources = Collections.emptyList();
+                    }
+                    return propertySources;
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return Collections.emptyList();
     }
 
     public static Map<String, Object> extractProperty(String conf, ConfigurableEnvironment environment) {

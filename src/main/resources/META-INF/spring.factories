@@ -3,8 +3,19 @@ org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
 com.lethe.disconf.boot.DisconfAutoConfiguration,\
 com.lethe.disconf.spring.AnnoValueAutoConfiguration
 
-org.springframework.context.ApplicationContextInitializer=\
-com.lethe.disconf.boot.DisconfApplicationContextInitializer
+#org.springframework.context.ApplicationContextInitializer=\
+#com.lethe.disconf.boot.DisconfApplicationContextInitializer
 
 org.springframework.boot.env.EnvironmentPostProcessor=\
 com.lethe.disconf.boot.DisconfEnvironmentPostProcessor
+
+
+
+# ConfigData Location Resolvers
+org.springframework.boot.context.config.ConfigDataLocationResolver=\
+com.lethe.disconf.configdata.DisconfConfigDataLocationResolver
+
+
+# ConfigData Loaders
+org.springframework.boot.context.config.ConfigDataLoader=\
+com.lethe.disconf.configdata.DisconfConfigDataLoader
